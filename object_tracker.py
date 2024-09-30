@@ -9,12 +9,6 @@ from smbus import SMBus
 addr = 0x08
 bus = SMBus(1)
 
-# GPIO setup for servo
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup(11, GPIO.OUT)
-servo1 = GPIO.PWM(11, 50)  # pin 11 for servo1, 50Hz
-servo1.start(0)
-angle = 90
 
 # DNN Configuration for Object Detection
 def configDNN():
@@ -74,14 +68,20 @@ if __name__ == "__main__":
         screen_center_y = pc2array.shape[0] / 2
 
         for box, className in objectInfo:
+            # variable to send both the y and x offset values to the Arduino to adjust the servo motors
             sendval = 0
+            # get the x and y coordinates of the center point of the object
             tracked_object_center_x = box[0] + (box[2] / 2)
             tracked_object_center_y = box[1] + (box[3] / 2)
 
+            # calculate the x and y distance from the center of the object to the center of the screen
             distance_to_center_x = (screen_center_x - tracked_object_center_x) / 2
             distance_to_center_y = screen_center_y - tracked_object_center_y
 
-            # X-axis control logic
+            # Convert the distance from the center of the screen to a scale of 1-9(1 being the closest and 9 the furthest from the center)
+
+            # X-axis control logic 
+            # Store the x offset in the one's place of the sendval variable
             if 10 < distance_to_center_x <= 30:
                 sendval = 5
             elif 30 < distance_to_center_x <= 60:
@@ -104,6 +104,7 @@ if __name__ == "__main__":
                 sendval = 4
 
             # Y-axis control logic
+            # Store the y offset in the tens' place of the sendval variable
             if 10 < distance_to_center_y <= 30:
                 sendval += 50
             elif 30 < distance_to_center_y <= 60:
@@ -125,6 +126,7 @@ if __name__ == "__main__":
             elif distance_to_center_y < -110:
                 sendval += 40
             
+            #Send the offset values to the Arduino using I2C protocol
             bus.write_byte(addr, sendval)
 
         cv2.imshow("Output", pc2array)
